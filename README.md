@@ -2,7 +2,7 @@
 
 把 Legado 阅读器的 Web API 接入 MCP 客户端，并提供书源知识查询、网站结构分析和规则调试工具。社区项目，非 Legado 官方产品。
 
-[MCP 工具参考](./mcp-tool-reference.md) · [Legado Web API 文档](./legado-web-api.md) · [贡献指南](./CONTRIBUTING.md)
+[MCP 工具参考](./docs/mcp-tool-reference.md) · [Legado Web API 文档](./docs/legado-web-api.md) · [贡献指南](./CONTRIBUTING.md)
 
 ## 功能
 
@@ -11,7 +11,7 @@
 - **书源开发**：搜索知识库、读取 CSS 规则和模板、查询真实案例；分析搜索页、详情页、目录页和正文页。
 - **规则辅助**：验证书源 JSON、解析规则、运行本地调试、分析错误并生成修复建议。
 
-完整工具名称、参数和返回值见 [MCP 工具参考](./mcp-tool-reference.md)。
+完整工具名称、参数和返回值见 [MCP 工具参考](./docs/mcp-tool-reference.md)。
 
 ## 环境要求
 

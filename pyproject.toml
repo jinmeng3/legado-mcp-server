@@ -49,9 +49,9 @@ build-backend = "hatchling.build"
 packages = ["legado_mcp_server"]
 
 [tool.hatch.build.targets.wheel.force-include]
-"legado-web-api.md" = "legado_mcp_server/_docs/legado-web-api.md"
+"docs/legado-web-api.md" = "legado_mcp_server/_docs/legado-web-api.md"
 "skills/" = "legado_mcp_server/_skills/"
-"mcp-tool-reference.md" = "legado_mcp_server/_docs/mcp-tool-reference.md"
+"docs/mcp-tool-reference.md" = "legado_mcp_server/_docs/mcp-tool-reference.md"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

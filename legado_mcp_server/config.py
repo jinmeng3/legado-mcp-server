@@ -43,7 +43,7 @@ class Settings:
 
     @property
     def api_doc_path(self) -> Path:
-        return self.repo_root / "legado-web-api.md"
+        return self.repo_root / "docs" / "legado-web-api.md"
 
     def read_api_doc_text(self) -> str:
         try:
