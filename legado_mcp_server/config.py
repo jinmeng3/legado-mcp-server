@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ipaddress
 import os
 import tempfile
 from dataclasses import dataclass
@@ -32,6 +33,20 @@ class Settings:
     transport: str = "stdio"
     host: str = "127.0.0.1"
     port: int = 8000
+
+    def __post_init__(self) -> None:
+        if self.transport != "streamable-http":
+            return
+        host = self.host.strip().lower()
+        try:
+            is_loopback = ipaddress.ip_address(host).is_loopback
+        except ValueError:
+            is_loopback = host == "localhost"
+        if not is_loopback:
+            raise ValueError(
+                "streamable-http only binds to loopback; place an authenticated "
+                "reverse proxy in front for remote access"
+            )
 
     @property
     def resolved_ws_url(self) -> str:

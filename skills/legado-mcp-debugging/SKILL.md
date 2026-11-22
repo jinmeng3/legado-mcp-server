@@ -16,6 +16,8 @@ description: Validate, parse, debug, and repair Legado book source JSON with the
 ## 安全和正确性
 
 - `skill_debug_local` 与 `skill_auto_fix` 会对书源中的目标网址发起网络请求；只提供可信书源。
+- `skill_parse_rule`、`skill_debug_local` 和 `skill_auto_fix` 默认不执行书源 JavaScript；JS 规则结果不完整时应明确报告这一限制。
+- 只有操作者明确接受以服务进程权限执行可信书源代码时，才设置 `LEGADO_ENABLE_UNSAFE_JS=1`。不要为不可信来源启用。
 - 自动修复结果是候选书源，必须检查变更并重新验证，不能直接覆盖用户数据。
 - 本地 Python 引擎是近似实现。CSS 细节、Rhino JavaScript、正则和编码行为可能与 Legado 有差异；冲突时查看 Legado Kotlin 实现，并以阅读 App 实测为最终判断。
 - 不因模拟成功宣称阅读 App 中已验证成功；清楚区分静态验证、Python 调试和 App 实测。

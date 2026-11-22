@@ -8,12 +8,12 @@ import re
 import time
 from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass, field
-from urllib.parse import urljoin, urlparse, urlencode
+from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
 from .analyze_rule import AnalyzeRule
-from .book_source import BookSource, SearchRule, BookInfoRule, TocRule, ContentRule
+from .book_source import BookSource
 
 
 @dataclass
@@ -107,8 +107,7 @@ class DebugEngine:
             # 移除#及其后面的内容
             clean_url = url.split('#')[0].strip()
             self.log("初始化", f"清理bookSourceUrl: {url} -> {clean_url}")
-            # 创建一个新的book_source对象，更新URL
-            from dataclasses import replace
+            # 更新书源地址
             self.book_source.bookSourceUrl = clean_url
     
     def log(self, step: str, message: str, data: Any = None, error: str = None, state: int = None):
@@ -189,144 +188,63 @@ class DebugEngine:
             return url, {'method': 'GET'}
     
     def _fetch_url(self, url: str, options: Dict[str, Any] = None) -> Tuple[str, int]:
-        """
-        发送HTTP请求获取内容
-        
-        按照阅读源码的实现：
-        - HttpHelper.kt: OkHttpClient配置
-        - DecompressInterceptor.kt: gzip/deflate解压
-        - OkHttpUtils.kt: 响应解码
-        - EncodingDetect.kt: 编码自动检测
-        """
-        import urllib.request
-        import urllib.error
-        import ssl
-        import gzip
-        import io
-        
+        """Fetch a public URL and decode the response using Legado's charset rules."""
+        import re
+
+        from legado_mcp_server.safe_http import fetch_public_url
+
         options = options or {}
-        method = options.get('method', 'GET')
-        body = options.get('body')
-        charset = options.get('charset', '')  # 书源指定的编码
-        extra_headers = options.get('headers', {})
-        
-        # 创建SSL上下文 - 忽略证书验证
-        ssl_context = ssl.create_default_context()
-        ssl_context.check_hostname = False
-        ssl_context.verify_mode = ssl.CERT_NONE
-        
-        # 构建请求
-        body_data = body.encode(charset or 'utf-8') if body else None
-        req = urllib.request.Request(url, data=body_data, method=method)
-        
-        # 设置请求头 - 按照阅读的HttpHelper.kt
-        for key, value in self.session.headers.items():
-            req.add_header(key, value)
-        for key, value in extra_headers.items():
-            req.add_header(key, value)
-        
-        # 按照阅读添加默认头
-        if 'Accept-Encoding' not in extra_headers:
-            req.add_header('Accept-Encoding', 'gzip, deflate')
-        
-        # POST请求需要设置Content-Type
-        if method.upper() == 'POST' and body and 'Content-Type' not in extra_headers:
-            req.add_header('Content-Type', 'application/x-www-form-urlencoded')
-        
+        method = options.get("method", "GET")
+        body = options.get("body")
+        charset = options.get("charset", "")
+        extra_headers = options.get("headers") or {}
+        headers = dict(self.session.headers)
+        headers.update(extra_headers)
+        headers.setdefault("Accept-Encoding", "gzip, deflate")
+        has_content_type = any(key.lower() == "content-type" for key in extra_headers)
+        if method.upper() == "POST" and body and not has_content_type:
+            headers.setdefault("Content-Type", "application/x-www-form-urlencoded")
+
         try:
-            with urllib.request.urlopen(req, timeout=30, context=ssl_context) as response:
-                content = response.read()
-                status_code = response.status
-                
-                # 1. 解压处理 - 按照阅读的DecompressInterceptor.kt
-                content_encoding = response.headers.get('Content-Encoding', '').lower()
-                if 'gzip' in content_encoding or (len(content) > 2 and content[:2] == b'\x1f\x8b'):
-                    try:
-                        content = gzip.decompress(content)
-                    except Exception:
-                        pass
-                elif 'deflate' in content_encoding:
-                    import zlib
-                    try:
-                        content = zlib.decompress(content, -zlib.MAX_WBITS)
-                    except Exception:
-                        pass
-                
-                # 2. 移除UTF-8 BOM - 按照阅读的Utf8BomUtils.kt
-                if len(content) >= 3 and content[0:3] == b'\xef\xbb\xbf':
-                    content = content[3:]
-                
-                # 3. 编码检测和解码 - 按照阅读的OkHttpUtils.kt text()方法
-                # 优先级：指定编码 > HTTP头 > HTML内容检测
-                
-                # 3.1 检查书源指定的编码
-                if charset:
-                    try:
-                        return content.decode(charset), status_code
-                    except:
-                        pass
-                
-                # 3.2 检查HTTP头的Content-Type charset
-                content_type = response.headers.get('Content-Type', '')
-                if 'charset=' in content_type.lower():
-                    try:
-                        http_charset = content_type.lower().split('charset=')[-1].split(';')[0].strip()
-                        if http_charset:
-                            return content.decode(http_charset), status_code
-                    except:
-                        pass
-                
-                # 3.3 从HTML内容检测编码 - 按照阅读的EncodingDetect.getHtmlEncode()
-                try:
-                    # 尝试解析HTML的meta标签获取charset
-                    html_head = content[:4096]  # 只读取前4KB
-                    
-                    # 检查 <meta charset="xxx">
-                    import re
-                    charset_match = re.search(rb'<meta[^>]+charset=["\']?([^"\'\s>]+)', html_head, re.I)
-                    if charset_match:
-                        detected_charset = charset_match.group(1).decode('ascii', errors='ignore')
-                        try:
-                            return content.decode(detected_charset), status_code
-                        except:
-                            pass
-                    
-                    # 检查 <meta http-equiv="content-type" content="text/html; charset=xxx">
-                    content_type_match = re.search(
-                        rb'<meta[^>]+http-equiv=["\']?content-type["\']?[^>]+content=["\']?[^"\']*charset=([^"\'\s;>]+)',
-                        html_head, re.I
-                    )
-                    if content_type_match:
-                        detected_charset = content_type_match.group(1).decode('ascii', errors='ignore')
-                        try:
-                            return content.decode(detected_charset), status_code
-                        except:
-                            pass
-                except:
-                    pass
-                
-                # 3.4 尝试UTF-8解码
-                try:
-                    return content.decode('utf-8'), status_code
-                except:
-                    pass
-                
-                # 3.5 尝试GBK解码（中文网站常见）
-                try:
-                    return content.decode('gbk'), status_code
-                except:
-                    pass
-                
-                # 3.6 最后使用utf-8忽略错误
-                return content.decode('utf-8', errors='ignore'), status_code
-                
-        except urllib.error.HTTPError as e:
-            return "", e.code
-        except urllib.error.URLError as e:
+            content, _, status_code, response_headers = fetch_public_url(
+                url,
+                method=method,
+                content=body.encode(charset or "utf-8") if body else None,
+                headers=headers,
+                timeout_seconds=30,
+            )
+        except Exception:
             return "", 0
-        except Exception as e:
-            return "", 0
-    
+        if status_code >= 400:
+            return "", status_code
+        if content.startswith(bytes.fromhex("efbbbf")):
+            content = content[3:]
+
+        candidates = [charset]
+        content_type = response_headers.get("content-type", "")
+        match = re.search(r"charset\s*=\s*([^;\s]+)", content_type, re.I)
+        if match:
+            candidates.append(match.group(1).strip().strip(chr(39) + chr(34)))
+
+        html_head = content[:4096]
+        meta_match = re.search(
+            rb"charset\s*=\s*[^A-Za-z0-9._-]*([A-Za-z0-9._-]+)",
+            html_head,
+            re.I,
+        )
+        if meta_match:
+            candidates.append(meta_match.group(1).decode("ascii", errors="ignore"))
+        candidates.extend(("utf-8", "gbk"))
+
+        for candidate in candidates:
+            if not candidate:
+                continue
+            try:
+                return content.decode(candidate), status_code
+            except (LookupError, UnicodeDecodeError):
+                continue
+        return content.decode("utf-8", errors="ignore"), status_code
+
     def test_search(self, keyword: str = "斗破苍穹") -> DebugResult:
         result = DebugResult(success=False, message="搜索测试")
         start_time = time.time()

@@ -17,11 +17,8 @@ import urllib.request
 import ssl
 import gzip
 import zlib
-import random
-import uuid
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field
-from pathlib import Path
 
 
 class CookieStore:
@@ -974,9 +971,20 @@ class LegadoJsEngine:
         js_lib: str = None,
         timeout: int = 30
     ) -> JsExecutionResult:
+        if os.environ.get("LEGADO_ENABLE_UNSAFE_JS", "").lower() not in {
+            "1", "true", "yes", "on"
+        }:
+            return JsExecutionResult(
+                success=False,
+                error=(
+                    "JavaScript rules are disabled by default because they execute "
+                    "with the server user's permissions. Set LEGADO_ENABLE_UNSAFE_JS=1 "
+                    "only for trusted sources."
+                ),
+            )
         start_time = time.time()
         context = context or {}
-        
+
         context_js = "// Context variables\n"
         for key, value in context.items():
             if isinstance(value, str):

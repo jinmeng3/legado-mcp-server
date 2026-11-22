@@ -44,10 +44,11 @@ uv tool install .
 | `--legado-base-url` | `LEGADO_BASE_URL` | `http://127.0.0.1:1122` | Legado HTTP 地址 |
 | `--legado-ws-url` | `LEGADO_WS_URL` | HTTP 端口加 1 | Legado WebSocket 地址 |
 | `--transport` | — | `stdio` | `stdio` 或 `streamable-http` |
-| `--host` | — | `127.0.0.1` | HTTP transport 监听地址 |
+| `--host` | — | `127.0.0.1` | HTTP transport 仅允许绑定回环地址 |
 | `--port` | — | `8000` | HTTP transport 监听端口 |
 | — | `LEGADO_HTTP_TIMEOUT` | `60` 秒 | HTTP 请求超时 |
 | — | `LEGADO_SESSION_BUFFER_SIZE` | `1000` | WebSocket 会话缓冲区大小 |
+| — | `LEGADO_ENABLE_UNSAFE_JS` | 未设置 | 显式启用可信书源中的 JavaScript 规则；代码以服务进程权限执行 |
 
 ### Codex
 
@@ -99,6 +100,9 @@ uv run ruff check .
 ## 使用说明
 
 - 网站分析、书源调试和自动修复会请求书源中配置的网址。只使用可信的书源和目标地址。
+- `streamable-http` 仅绑定回环地址；远程访问请放在带认证的反向代理之后。
+- JavaScript 规则默认关闭。仅在信任书源且接受其以当前用户权限执行时设置 `LEGADO_ENABLE_UNSAFE_JS=1`。
+- 网站抓取只允许目标主机解析到公网 IP，最多跟随 5 次重定向，并将响应限制为 10 MiB。
 - Python 调试引擎是 Legado 行为的近似实现；复杂 CSS、JavaScript、正则和编码行为，以 Legado Kotlin 源码及阅读器实测为准。
 - 自动修复返回候选结果，需要检查并重新验证；本地模拟成功不代表已在阅读器中验证。
 

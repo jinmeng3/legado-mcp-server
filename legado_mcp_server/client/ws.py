@@ -77,6 +77,9 @@ class SessionRecord:
 
 
 class LegadoWebSocketSessionManager:
+    MAX_ACTIVE_SESSIONS = 32
+    MAX_RETAINED_SESSIONS = 100
+
     def __init__(
         self,
         settings: Settings,
@@ -90,7 +93,17 @@ class LegadoWebSocketSessionManager:
     def get_session(self, session_id: str) -> SessionRecord | None:
         return self._sessions.get(session_id)
 
-    def create_session(self, session_type: str) -> SessionRecord:
+    def create_session(self, session_type: str) -> SessionRecord | None:
+        active_count = sum(not record.done for record in self._sessions.values())
+        if active_count >= self.MAX_ACTIVE_SESSIONS:
+            return None
+        for old_session_id, record in list(self._sessions.items()):
+            if len(self._sessions) < self.MAX_RETAINED_SESSIONS:
+                break
+            if record.done:
+                del self._sessions[old_session_id]
+        if len(self._sessions) >= self.MAX_RETAINED_SESSIONS:
+            return None
         session_id = uuid.uuid4().hex
         record = SessionRecord(session_id=session_id, session_type=session_type)
         self._sessions[session_id] = record
@@ -133,6 +146,12 @@ class LegadoWebSocketSessionManager:
             record.warnings.append(
                 "Wait timed out before the upstream session completed."
             )
+            record.cancelled = True
+            if record.task is not None and not record.task.done():
+                record.task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await record.task
+            record.mark_done(error_message=record.error_message)
         return ToolResult(
             ok=record.error_message is None,
             upstream_endpoint=record.session_type,
@@ -183,6 +202,14 @@ class LegadoWebSocketSessionManager:
 
     def start_book_search(self, *, key: str) -> ToolResult:
         record = self.create_session("book_search")
+        if record is None:
+            return ToolResult(
+                ok=False,
+                upstream_endpoint="/searchBook",
+                normalized_data=None,
+                raw_upstream=None,
+                warnings=["WebSocket session capacity reached."],
+            )
         record.task = asyncio.create_task(
             self._run_search_session(record, "/searchBook", {"key": key})
         )
@@ -199,6 +226,14 @@ class LegadoWebSocketSessionManager:
         self, *, endpoint: str, session_type: str, payload: dict[str, Any]
     ) -> ToolResult:
         record = self.create_session(session_type)
+        if record is None:
+            return ToolResult(
+                ok=False,
+                upstream_endpoint=endpoint,
+                normalized_data=None,
+                raw_upstream=None,
+                warnings=["WebSocket session capacity reached."],
+            )
         record.task = asyncio.create_task(
             self._run_text_session(record, endpoint, payload)
         )

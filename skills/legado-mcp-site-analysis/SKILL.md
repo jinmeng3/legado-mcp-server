@@ -18,6 +18,8 @@ description: Use the Legado MCP website tools to inspect live pages and derive b
 ## 约束
 
 - 不猜搜索接口；先检查 HTML 表单和内嵌脚本线索。需要访问 API 时再直接测试发现的地址。
+- 网站抓取仅允许目标主机解析到公网 IP，并校验实际连接地址；回环、私有网段和重定向到非公网地址会被拒绝。不要尝试绕过此限制。
+- 抓取最多跟随 5 次重定向，响应体上限为 10 MiB；`skill_fetch_html` 返回的 HTML 最多 100000 字符。超限时说明截断或请求被拒绝。
 - HTML 可能动态加载、需要 Cookie、特定请求头或受反爬保护。工具返回空页面时，明确报告证据，不把空结果当成页面不存在。
 - 编码优先以 HTTP `Content-Type` 和 HTML meta 为准；遇到乱码时显式传入候选 charset 再比较。
 - 分析工具只返回有限长度的 HTML/文本预览。需要完整内容时用 `skill_fetch_html` 调高 `max_chars`，上限 100000 字符。

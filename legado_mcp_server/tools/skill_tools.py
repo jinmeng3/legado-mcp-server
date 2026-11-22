@@ -2,15 +2,17 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import re
 from dataclasses import asdict
 from pathlib import Path, PurePosixPath
 from typing import Any
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin
 
-import httpx
 from bs4 import BeautifulSoup
 from mcp.server.fastmcp import FastMCP
+
+from legado_mcp_server.safe_http import fetch_public_url
 
 _PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 _DATA_ROOT = _PACKAGE_ROOT / "skill_data"
@@ -76,13 +78,16 @@ def _jsonable(value: Any) -> Any:
     return str(value)
 
 
-def _fetch(url: str, timeout_seconds: float, headers: dict[str, str] | None = None) -> tuple[bytes, str, int, dict[str, str]]:
-    parsed = urlparse(url)
-    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
-        raise ValueError("url must be an absolute http(s) URL")
-    with httpx.Client(follow_redirects=True, timeout=timeout_seconds, headers=headers) as client:
-        response = client.get(url)
-        return response.content, str(response.url), response.status_code, dict(response.headers)
+def _fetch(
+    url: str,
+    timeout_seconds: float,
+    headers: dict[str, str] | None = None,
+) -> tuple[bytes, str, int, dict[str, str]]:
+    return fetch_public_url(
+        url,
+        headers=headers,
+        timeout_seconds=timeout_seconds,
+    )
 
 
 def _decode_html(data: bytes, headers: dict[str, str], charset: str = "") -> tuple[str, str]:
@@ -327,6 +332,10 @@ def register_skill_tools(mcp: FastMCP) -> None:
     @mcp.tool()
     def skill_parse_rule(rule: str, html: str, base_url: str = "", js_lib: str = "") -> dict[str, Any]:
         """Run an AnalyzeRule expression against supplied HTML and return extracted values."""
+        if ("@js:" in rule or "<js>" in rule) and os.environ.get(
+            "LEGADO_ENABLE_UNSAFE_JS", ""
+        ).lower() not in {"1", "true", "yes", "on"}:
+            return {"rule": rule, "error": "JavaScript rules are disabled by default."}
         AnalyzeRule, _, _, _ = _engine()
         analyzer = AnalyzeRule(html, base_url, js_lib or None)
         try:
