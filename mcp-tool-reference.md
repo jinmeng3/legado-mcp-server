@@ -4,7 +4,7 @@
 
 ## 统一返回结构
 
-除 resources 外，所有工具都返回统一对象：
+Legado HTTP / WebSocket 工具返回统一对象；`skill_*` 工具返回各自用途的结构化结果，参数见下文：
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
@@ -184,6 +184,37 @@
 
 - `tag: string` - RSS 源 URL
 - **返回**：归一化后的 `logs` 列表
+
+## Legado 书源 skill 工具
+
+### 知识库
+
+- `skill_search_knowledge(query, max_results=8)`：搜索包内 `skill_data/assets/` 和上游 `SKILL.md`。
+- `skill_get_css_rules(page=1, page_size=200)`：分页读取 CSS 选择器规则。
+- `skill_get_source_examples(query="", limit=5)`：搜索随包安装的真实书源案例。
+- `skill_get_templates(limit=5)`：读取书源模板片段。
+- `skill_read_document(path, page=1, page_size=200)`：分页读取 `assets/`、`docs/` 或上游技能文档。
+- `skill_list_knowledge(prefix="assets/", limit=200)`：列出包内知识资源。
+
+### 网站分析
+
+- `skill_detect_charset(url, timeout_seconds=20)`：请求页面并识别响应编码。
+- `skill_fetch_html(url, charset="", timeout_seconds=20, max_chars=30000, headers=None)`：获取 HTML。
+- `skill_analyze_search(url, charset="", timeout_seconds=20)`：分析搜索页表单、链接及候选列表容器。
+- `skill_analyze_book_info(url, charset="", timeout_seconds=20)`：分析详情页。
+- `skill_analyze_toc(url, charset="", timeout_seconds=20)`：分析目录页与章节链接。
+- `skill_analyze_content(url, charset="", timeout_seconds=20)`：分析正文容器和分页链接。
+
+### 规则调试与修复
+
+- `skill_validate_source(source)`：检查书源 JSON、字段及规则区块。
+- `skill_parse_rule(rule, html, base_url="", js_lib="")`：用上游 `AnalyzeRule` 对给定 HTML 执行规则。
+- `skill_debug_local(source, stage="search", keyword="斗破苍穹", url="")`：使用上游 `DebugEngine` 测试 search/book_info/toc/content/full 阶段。
+- `skill_analyze_error(test_result)`：使用 `AutoFixer.analyze_error` 分类调试错误。
+- `skill_suggest_fix(source, error_type, error_message, html_preview="")`：生成候选修复。
+- `skill_auto_fix(source, keyword="斗破苍穹", max_attempts=3)`：运行上游修复和在线重测循环（次数限制为 1–5）。
+
+页面分析和调试会向目标网站发起 HTTP 请求。Python 调试引擎是近似实现；关键差异以 Legado Kotlin 源码及阅读 App 实测为准。
 
 ## Resource 列表
 

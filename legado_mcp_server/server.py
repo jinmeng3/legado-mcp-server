@@ -11,6 +11,7 @@ from legado_mcp_server.client import LegadoHttpClient, LegadoWebSocketSessionMan
 from legado_mcp_server.config import Settings, load_settings
 from legado_mcp_server.tools.http_tools import register_http_tools
 from legado_mcp_server.tools.resources import register_resources
+from legado_mcp_server.tools.skill_tools import register_skill_tools
 from legado_mcp_server.tools.ws_tools import register_ws_tools
 
 
@@ -47,6 +48,7 @@ def build_server(settings: Settings) -> FastMCP:
     register_http_tools(mcp, http_client)
     register_ws_tools(mcp, ws_manager)
     register_resources(mcp, settings, http_client, ws_manager)
+    register_skill_tools(mcp)
     return mcp
 
 

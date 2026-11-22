@@ -1,123 +1,110 @@
-# legado-mcp-server
+# Legado MCP Server
 
-`legado-mcp-server` 是一个把Legado Web API封装成MCP服务的项目，主要是为了方便通过AI编写书源时调试
+将 Legado 阅读器的 Web HTTP/WebSocket 接口和书源开发辅助能力接入 MCP 客户端。项目由社区维护，非 Legado 官方项目。
 
-## 适用场景
-- 把 Legado 接入 Codex、Claude Desktop、Cherry Studio 等 MCP 客户端
+## 功能
 
-## 文档
+- 管理书源、RSS 源、替换规则、书架、阅读进度和 Web 阅读配置。
+- 调试 Legado 书源、搜索图书，并查看 WebSocket 调试日志。
+- 搜索书源知识库，读取 CSS 规则、模板和真实书源案例。
+- 获取网站 HTML，分析搜索页、详情页、目录页和正文页。
+- 校验书源 JSON、解析规则、运行本地调试并生成修复建议。
 
-- [Legado Web 接口文档](./legado-web-api.md)
-- [MCP 工具说明](./mcp-tool-reference.md)
+MCP 工具的完整参数见 [MCP 工具说明](./mcp-tool-reference.md)；接口背景见 [Legado Web 接口文档](./legado-web-api.md)。
 
 ## 环境要求
 
-- Python 3.11+
-- 已开启 Legado Web 服务的设备
-- 推荐使用 `uv`
+- Python 3.11 或更高版本。
+- 已开启 Web 服务的 Legado 阅读器；使用 HTTP/WebSocket API 工具时需要连接它。
+- 推荐使用 [uv](https://docs.astral.sh/uv/) 安装和管理环境。
 
-## 快速开始
+## 安装
 
-### 安装
+从源码安装：
 
-1. 下载源码到本地
-2. 在项目根目录下执行：
-   ```powershell
-   uv tool install .
-   ```
-   *或者直接从 GitHub 安装：*
-   ```powershell
-   uv tool install git+https://github.com/joestar817/legado-mcp-server.git
-   ```
+```bash
+git clone https://github.com/jinmeng3/legado-mcp-server.git
+cd legado-mcp-server
+uv tool install .
+```
 
-### 配置
+也可以直接安装远程仓库：
 
-命令行参数：
+```bash
+uv tool install git+https://github.com/jinmeng3/legado-mcp-server.git
+```
 
-- `--transport`: `stdio` 或 `streamable-http` (默认为 `stdio`)
-- `--host`: `streamable-http` 的监听地址 (默认 `127.0.0.1`)
-- `--port`: `streamable-http` 的监听端口 (默认 `8000`)
-- `--legado-base-url`: Legado HTTP 地址 (如 `http://192.168.1.10:1122`)
-- `--legado-ws-url`: Legado WebSocket 地址，可选 (如果不指定，默认按 HTTP 端口 + 1 推导)
+## 配置
 
-### 环境变量：
+Legado 默认 HTTP 地址为 `http://127.0.0.1:1122`。可通过命令行参数或环境变量配置：
 
-- `LEGADO_BASE_URL`
-- `LEGADO_WS_URL`
-- `LEGADO_HTTP_TIMEOUT`: HTTP 请求超时时间 (默认 60s)
-- `LEGADO_SESSION_BUFFER_SIZE`: WebSocket 消息缓冲区大小 (默认 1000)
+| 参数 | 环境变量 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `--legado-base-url` | `LEGADO_BASE_URL` | `http://127.0.0.1:1122` | Legado HTTP 地址 |
+| `--legado-ws-url` | `LEGADO_WS_URL` | 按 HTTP 端口推导 | WebSocket 地址 |
+| `--transport` | — | `stdio` | `stdio` 或 `streamable-http` |
+| `--host` | — | `127.0.0.1` | HTTP transport 监听地址 |
+| `--port` | — | `8000` | HTTP transport 监听端口 |
+| — | `LEGADO_HTTP_TIMEOUT` | `60` | HTTP 请求超时秒数 |
+| — | `LEGADO_SESSION_BUFFER_SIZE` | `1000` | WebSocket 会话缓冲区大小 |
 
-## MCP 客户端接入示例
+启动参数也可以通过 `legado-mcp-server --help` 查看。
 
-### Codex
+### Codex 配置示例
 
+安装后在 Codex 配置中添加：
 
 ```toml
 [mcp_servers.legado]
 command = "legado-mcp-server"
-args = ["--legado-base-url", "http://192.168.1.10:1122"]
-enabled = true
+args = ["--legado-base-url", "http://127.0.0.1:1122"]
 ```
 
-### LM studio
+### Claude Desktop 配置示例
 
 ```json
 {
   "mcpServers": {
-    "legado-mcp-server": {
+    "legado": {
       "command": "legado-mcp-server",
-      "args": [
-        "--legado-base-url",
-        "http://192.168.1.10:1122"
-      ]
+      "args": ["--legado-base-url", "http://127.0.0.1:1122"]
     }
   }
 }
 ```
 
+其他 MCP 客户端也可使用同一命令和参数。
 
+## Skills
 
-## 工具概览
+仓库的 [`skills/`](./skills/) 目录提供三份工作流程说明：
 
-完整参数和返回结构见 [MCP 工具说明](./mcp-tool-reference.md)。
+- `legado-mcp-knowledge`：查询书源知识、规则、模板和案例。
+- `legado-mcp-site-analysis`：依据真实网页结构推导书源规则。
+- `legado-mcp-debugging`：验证、调试和修复书源。
 
-按类别概览：
+知识文件和调试引擎随 Python 包分发，无需额外下载资源压缩包。
 
-- 书源：
-  - `book_source_get`
-  - `book_source_list`
-  - `book_source_save`
-  - `book_source_save_many`
-  - `book_source_delete_many`
-- RSS：
-  - `rss_source_get`
-  - `rss_source_list`
-  - `rss_source_save`
-  - `rss_source_save_many`
-  - `rss_source_delete_many`
-- 替换规则：
-  - `replace_rule_list`
-  - `replace_rule_save`
-  - `replace_rule_delete`
-  - `replace_rule_test`
-- 图书：
-  - `book_save`
-  - `book_delete`
-  - `bookshelf_list`
-  - `book_refresh_toc`
-  - `book_get_chapters`
-  - `book_get_content`
-  - `book_save_progress`
-  - `book_add_local`
-- 图片与配置：
-  - `book_get_cover`
-  - `book_get_image`
-  - `web_read_config_get`
-  - `web_read_config_save`
-- 调试与搜索：
-  - `book_source_debug`
-  - `rss_source_debug`
-  - `book_search`
+## 开发
+
+```bash
+uv sync --extra dev
+uv run pytest
+uv run ruff check .
+```
+
+新增或修改 MCP 工具时，请同步更新 `mcp-tool-reference.md`，并为可复现的用户行为补充测试。
+
+## 注意事项
+
+- 网站分析、书源调试和自动修复可能会向书源中配置的网址发起网络请求。仅使用可信的书源和目标地址。
+- Python 调试引擎是 Legado 行为的近似实现。复杂 CSS、JavaScript、正则和编码问题应以 Legado 官方 Kotlin 源码及阅读器实际运行结果为准。
+- 自动修复结果需要人工检查，并重新验证；本地模拟成功不代表已在阅读器中验证。
 
 ## 许可证
-[MIT](./LICENSE)
+
+本项目自有代码使用 MIT 许可证，见 [LICENSE](./LICENSE)。随包引入的上游引擎保留其许可证，见 [第三方声明](./THIRD_PARTY_NOTICES.md) 和 `legado_mcp_server/skill_engine/LICENSE`。
+
+## 参与项目
+
+欢迎提交 Issue 和 Pull Request。开发环境、检查命令和贡献流程见 [CONTRIBUTING.md](./CONTRIBUTING.md)；安全问题请阅读 [SECURITY.md](./SECURITY.md)。

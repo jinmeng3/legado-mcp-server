@@ -20,3 +20,8 @@ build/
 htmlcov/
 .mypy_cache/
 tmp/
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
