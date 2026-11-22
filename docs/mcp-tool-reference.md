@@ -22,6 +22,19 @@ Legado HTTP / WebSocket 工具返回统一对象；`skill_*` 工具返回各自�
 - 作用：检查 Legado Web 服务是否可达
 - 参数：无
 
+### `legado_connection_info()`
+
+- 作用：显示当前 Legado HTTP / WebSocket 地址、默认地址和配置提示。
+- 参数：无。
+- 对运行中的 MCP 临时切换地址可调用 `legado_connection_configure(http_base_url, websocket_url=None)`；要在重启后保留设置，仍需在启动配置中设置环境变量。
+
+### `legado_connection_configure(http_base_url, websocket_url=None)`
+
+- 作用：按用户明确提供的地址切换当前 MCP 进程正在使用的 Legado 后端；后续 HTTP 请求和 WebSocket 调试会使用新地址。
+- `http_base_url: string`：Legado HTTP 服务地址，例如 `http://192.168.1.50:1122`。
+- `websocket_url: string | null`：可选 WebSocket 地址；省略时按 HTTP 主机和端口加 1 推导。
+- 仅修改当前进程内存，不保存环境变量；MCP 重启后恢复启动配置。已有 WebSocket 会话继续使用原连接。
+
 ### `legado_get_api_summary()`
 
 - 作用：返回当前支持的 HTTP / WebSocket 概要

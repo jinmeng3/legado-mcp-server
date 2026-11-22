@@ -50,6 +50,14 @@ uv tool install .
 | — | `LEGADO_SESSION_BUFFER_SIZE` | `1000` | WebSocket 会话缓冲区大小 |
 | — | `LEGADO_ENABLE_UNSAFE_JS` | 未设置 | 显式启用可信书源中的 JavaScript 规则；代码以服务进程权限执行 |
 
+调用 `legado_connection_info()` 可查看当前连接地址和配置提示。
+
+- 若 Legado Web 服务不在运行 MCP 服务的同一台机器上，在 MCP 服务进程设置 `LEGADO_BASE_URL`。
+- 局域网设备地址会变化时，建议在路由器中为设备保留 DHCP 地址。
+- 修改配置后重启 MCP 服务。
+
+运行期间可让 AI 调用 `legado_connection_configure(http_base_url, websocket_url=None)` 切换地址；新地址仅在当前 MCP 进程生效，重启后恢复启动配置。需要持久使用时，在 MCP 启动配置中设置 `LEGADO_BASE_URL` 和可选的 `LEGADO_WS_URL`。
+
 ### Codex
 
 将下面配置加入 Codex 的 MCP 配置：

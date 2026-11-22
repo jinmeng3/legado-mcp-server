@@ -19,4 +19,5 @@ description: Use the Legado knowledge library MCP tools to learn source rules, f
 - 知识库是参考。根据目标页面实际 HTML 选择规则，不能照搬案例中的站点 URL 或选择器。
 - 使用 `nextContentUrl` 表示正文页的后续分页；不要生成 `prevContentUrl`。
 - Legado 规则不要使用 `:contains()`、`:first-child` 或 `:last-child`；按知识库中的 Legado 语法选择提取方式和索引。
+- 编写发现地址（`exploreUrl`）的动态 URL 时，统一以 `sourceUrl` 为基址拼接路径；不要使用当前详情页或目录页 URL 作为基址。
 - 需要引用长文档时说明实际读取的路径和页码。

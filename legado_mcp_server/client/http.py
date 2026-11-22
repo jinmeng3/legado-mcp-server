@@ -23,6 +23,49 @@ class LegadoHttpClient:
             follow_redirects=True,
         )
 
+    def configure_connection(
+        self, http_base_url: str, websocket_url: str | None = None
+    ) -> None:
+        try:
+            http_url = httpx.URL(http_base_url)
+        except httpx.InvalidURL as exc:
+            raise ValueError("http_base_url must be a valid URL") from exc
+        if (
+            http_url.scheme not in {"http", "https"}
+            or not http_url.host
+            or http_url.username
+            or http_url.password
+            or http_url.query
+            or http_url.fragment
+        ):
+            raise ValueError(
+                "http_base_url must be an http(s) URL without credentials, "
+                "query, or fragment"
+            )
+
+        ws_url: httpx.URL | None = None
+        if websocket_url is not None:
+            try:
+                ws_url = httpx.URL(websocket_url)
+            except httpx.InvalidURL as exc:
+                raise ValueError("websocket_url must be a valid URL") from exc
+            if (
+                ws_url.scheme not in {"ws", "wss"}
+                or not ws_url.host
+                or ws_url.username
+                or ws_url.password
+                or ws_url.query
+                or ws_url.fragment
+            ):
+                raise ValueError(
+                    "websocket_url must be a ws(s) URL without credentials, "
+                    "query, or fragment"
+                )
+
+        self._client.base_url = http_url
+        self.settings.legado_base_url = str(self._client.base_url)
+        self.settings.legado_ws_url = str(ws_url).rstrip("/") if ws_url else ""
+
     async def aclose(self) -> None:
         await self._client.aclose()
 

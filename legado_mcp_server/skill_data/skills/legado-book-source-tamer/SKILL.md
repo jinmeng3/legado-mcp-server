@@ -7,6 +7,21 @@ description: 使用 Legado MCP 工具查询知识、分析公开站点、验证�
 
 按用户请求选择知识查询、站点分析、规则验证或书源调试流程。不要假设仓库包含 Legado 源码、旧版 Agent 工具或本地文件整理模块。
 
+## 先判断“测试链接”的类型
+
+- 后端/API 地址：按提供的接口定义直接发 HTTP 请求或调用已有后端工具，核对方法、参数、状态码和响应内容；不要把 API 请求解释为浏览器页面操作。
+- 本机或内网 API：使用当前环境可访问该地址的 HTTP 客户端或后端连接。本站点抓取工具只允许公网地址，不能用来测试回环或私有地址。
+- 公开网页：只有需要检查网页 HTML/结构时才使用 `skill_*` 网站工具；页面渲染或交互验证才使用浏览器。
+- 文件路径：直接读取和解析文件本身，不要当成网页链接打开。
+
+## Legado 后端连接诊断
+
+- `legado_connection_info()`：查看当前 HTTP / WebSocket 地址和配置提示；只读配置，不测试连接或修改配置。
+- `legado_ping()`：检查 Legado Web HTTP 服务是否可达。
+- 用户明确提供新地址并要求切换时，可调用 `legado_connection_configure(http_base_url, websocket_url=None)`；省略 WebSocket 地址时按 HTTP 端口加 1 推导。此修改只作用于当前进程，重启后恢复启动配置。
+- `book_source_debug(tag, key, mode="auto", timeout_seconds=30)`：通过已配置的 WebSocket 后端调试书源；`tag` 是书源 URL，目标站点地址来自书源配置。
+- 用户提供新地址并要求测试时，先调用 `legado_connection_configure` 切换，再用 `legado_ping` 检查 HTTP，最后运行指定测试；`legado_ping` 不验证 WebSocket，`book_source_debug` 才会实际连接该 WebSocket。
+
 ## 可用工具
 
 ### 知识库
@@ -43,6 +58,7 @@ description: 使用 Legado MCP 工具查询知识、分析公开站点、验证�
 ## 工作流程
 
 1. 确认用户要解决的阶段和已提供的书源、页面 HTML、URL。缺少真实 HTML 时，可在目标地址符合抓取限制的前提下使用网站分析工具；不要编造页面结构。
+   - 编写发现地址（`exploreUrl`）的动态 URL 时，统一以 `sourceUrl` 为基址拼接路径；不要使用当前详情页或目录页 URL 作为基址。
 2. 遇到语法或字段问题时，先调用 `skill_validate_source`。需要规则知识时，只查询对应的 CSS 规则、模板或案例，不要求无关工具全部调用。
 3. 用真实 HTML 调用 `skill_parse_rule` 验证候选规则。保留页面 URL 和相关 HTML 片段，说明验证范围。
 4. 需要联调时，调用 `skill_debug_local` 对应阶段；根据结果选择 `skill_analyze_error` 和 `skill_suggest_fix`。

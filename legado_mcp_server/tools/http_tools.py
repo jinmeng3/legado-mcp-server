@@ -6,6 +6,7 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 
 from legado_mcp_server.client.http import LegadoHttpClient
+from legado_mcp_server.config import DEFAULT_BASE_URL
 from legado_mcp_server.models.legado import (
     Book,
     BookProgress,
@@ -33,11 +34,71 @@ def prepare_local_book_upload(
     return file_name or path.name, content
 
 
+def _connection_info(client: LegadoHttpClient) -> dict[str, Any]:
+    base_url = client.settings.legado_base_url
+    return {
+        "http_base_url": base_url,
+        "websocket_url": client.settings.resolved_ws_url,
+        "default_http_base_url": DEFAULT_BASE_URL,
+        "using_default_http_base_url": base_url.rstrip("/") == DEFAULT_BASE_URL,
+        "environment_variables": {
+            "http": "LEGADO_BASE_URL",
+            "websocket": "LEGADO_WS_URL",
+        },
+        "configuration_example": (
+            '$env:LEGADO_BASE_URL = "http://<Legado-LAN-IP>:1122"'
+        ),
+        "notes": [
+            "127.0.0.1 points to the machine running this MCP server.",
+            "Use legado_connection_configure for a temporary runtime change.",
+            "Set environment variables before startup for persistent configuration.",
+            (
+                "The default WebSocket URL uses the HTTP host with its port "
+                "increased by 1."
+            ),
+            (
+                "book_source_debug uses the configured Legado WebSocket endpoint; "
+                "tag selects a configured book source."
+            ),
+        ],
+    }
+
+
 def register_http_tools(mcp: FastMCP, client: LegadoHttpClient) -> None:
     @mcp.tool()
     async def legado_ping() -> dict[str, Any]:
         """Check whether the Legado Web service is reachable."""
         return (await client.ping()).model_dump()
+
+    @mcp.tool()
+    def legado_connection_info() -> dict[str, Any]:
+        """Show the current Legado endpoints and configuration guidance.
+
+        This reports settings only; it does not test connectivity or change them.
+        """
+        return _connection_info(client)
+
+    @mcp.tool()
+    def legado_connection_configure(
+        http_base_url: str, websocket_url: str | None = None
+    ) -> dict[str, Any]:
+        """Change active endpoints for this process after the user requests it.
+
+        The change is temporary and does not persist across a server restart.
+        """
+        try:
+            client.configure_connection(http_base_url, websocket_url)
+        except ValueError as exc:
+            return {"configured": False, "error": str(exc)}
+        return {
+            **_connection_info(client),
+            "configured": True,
+            "persistent": False,
+            "message": (
+                "The new endpoints apply to subsequent requests in this process. "
+                "They are not saved and will revert after the MCP server restarts."
+            ),
+        }
 
     @mcp.tool()
     async def legado_get_api_summary() -> dict[str, Any]:
