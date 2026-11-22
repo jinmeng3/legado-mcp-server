@@ -20,6 +20,7 @@ build/
 htmlcov/
 .mypy_cache/
 tmp/
+/BOOK/
 .env
 .env.*
 !.env.example
