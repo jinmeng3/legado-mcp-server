@@ -50,13 +50,28 @@ uv tool install .
 | — | `LEGADO_SESSION_BUFFER_SIZE` | `1000` | WebSocket 会话缓冲区大小 |
 | — | `LEGADO_ENABLE_UNSAFE_JS` | 未设置 | 显式启用可信书源中的 JavaScript 规则；代码以服务进程权限执行 |
 
-调用 `legado_connection_info()` 可查看当前连接地址和配置提示。
+### 局域网和持久配置
 
-- 若 Legado Web 服务不在运行 MCP 服务的同一台机器上，在 MCP 服务进程设置 `LEGADO_BASE_URL`。
-- 局域网设备地址会变化时，建议在路由器中为设备保留 DHCP 地址。
-- 修改配置后重启 MCP 服务。
+`127.0.0.1` 指运行 MCP 服务的设备本机。如果 Legado Web 服务在另一台局域网设备上，应使用该设备当前的 IP，例如 `http://192.168.1.50:1122`。未设置 `LEGADO_WS_URL` 时，MCP 按 HTTP 地址推导 WebSocket 地址：主机相同、端口加 1，`http` 对应 `ws`、`https` 对应 `wss`。端口或地址规则不同时再显式设置 `LEGADO_WS_URL`。
 
-运行期间可让 AI 调用 `legado_connection_configure(http_base_url, websocket_url=None)` 切换地址；新地址仅在当前 MCP 进程生效，重启后恢复启动配置。需要持久使用时，在 MCP 启动配置中设置 `LEGADO_BASE_URL` 和可选的 `LEGADO_WS_URL`。
+要在 MCP 重启后保留地址，在 MCP 启动配置中设置 `LEGADO_BASE_URL`，必要时同时设置 `LEGADO_WS_URL`。通过 PowerShell 手动启动时：
+
+```powershell
+$env:LEGADO_BASE_URL = "http://192.168.1.50:1122"
+legado-mcp-server
+```
+
+如果由 Codex、Claude Desktop 等客户端启动 MCP 服务，应将环境变量放在该客户端的 Legado MCP 服务配置中。局域网设备 IP 经常变化时，可在路由器中为设备保留 DHCP 地址，或使用局域网 DNS 主机名。
+
+### 对话中临时切换和测试
+
+`legado_connection_info()` 显示当前 HTTP / WebSocket 配置，不测试连接也不修改配置。要临时切换运行中的 MCP，可直接告诉 AI：
+
+> Legado Web 服务地址是 `http://192.168.1.50:1122`。请切换到这个地址，先检查连接，再用 `book_source_debug` 调试我指定的书源。
+
+AI 应调用 `legado_connection_configure(http_base_url, websocket_url=None)` 切换地址，然后调用 `legado_ping()` 检查 HTTP 服务。省略 WebSocket 地址时按 HTTP 端口加 1 推导；如 WebSocket 端口不同，应一并提供。`legado_ping()` 不验证 WebSocket；`book_source_debug` 会通过 WebSocket 调试 `tag` 指定的书源。
+
+运行时切换只对当前 MCP 进程生效，不会写入环境变量；MCP 重启后恢复启动配置。
 
 ### Codex
 
